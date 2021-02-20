@@ -19,83 +19,81 @@ def break_single_char_XOR(i):
 
         #print("The score with key " + str(x) + " is " + str(s))
 
-    min_key_array = []
-
-    for y in range(0,len(i)):
-        min_key_array.append(min_score_key)
-    
+    min_key_array = bytearray([min_score_key for x in range(0,len(i))])
         
-    return [min_score,min_score_key,encrypt_XOR.fixed_XOR(i,min_key_array)]
+    return [min_score,min_score_key,encrypt_XOR.bytearray_XOR(i,min_key_array)]
 
 
-def break_repeating_key_XOR(iarray): #we'll handle i/o processing separately for this one. This will break a repeating XOR cipher on a byte array.
+def break_repeating_key_XOR(cipher_text): #we'll handle i/o processing separately for this one. This will break a repeating XOR cipher on a byte array.
 
     #For reasoning behind the Hamming distance trick to find key size, see: https://crypto.stackexchange.com/questions/8115/repeating-key-xor-and-hamming-distance
 
     #First, we will test reasonably sized keys to find the most reasonable key size
 
-    key_sizes = find_key_sizes(iarray,4)
+    key_sizes = find_key_sizes(cipher_text,1)  #We can look for the top n most likely key sizes. We'll stick with 1 for now.
 
     
-    print("With keysize " + str(key_sizes[0]) + ":")
-    print(text_conversion.intarray_to_string(break_repeating_with_keysize(iarray,key_sizes[0])))
-
-    
+    return break_repeating_with_keysize(cipher_text,key_sizes[0])
 
     
 
-def find_key_sizes(iarray,n): #Return the n most likely keysizes
+    
+
+def find_key_sizes(cipher_text,n): #Return the n most likely keysizes
     
     h_dists = []
 
-    for key_size in range(2,min(51,int(len(iarray)/2))):
+    for key_size in range(2,min(51,int(len(cipher_text)/2))):
         
         temp_dist = 0
 
-        for x in range(0,int(len(iarray)/(2*key_size))):
-            temp_dist += hamming_distance(iarray[2*x*key_size:(2*x+1)*key_size],iarray[(2*x+1)*key_size:(2*x+2)*key_size])
+        x = 0
+        while(x + 2*key_size < len(cipher_text)):
+            temp_dist += hamming_distance(cipher_text[x:x+key_size],cipher_text[x+key_size:x+2*key_size])
+
+            x+= 2*key_size
 
 
         h_dists.append([key_size,temp_dist])
 
-        print("For the key size " + str(key_size) + " the normalized Hamming distance is " + str(h_dists[key_size-2][1]))
+        #print("For the key size " + str(key_size) + " the normalized Hamming distance is " + str(h_dists[key_size-2][1]))
 
         
     best_sorted_key_sizes=[item[0] for item in sorted(h_dists,key=itemgetter(1))[0:n]]
 
     return best_sorted_key_sizes
 
-def break_repeating_with_keysize(iarray, key_size):
+def break_repeating_with_keysize(cipher_text, key_size):
     
-    transposed_blocks = transpose_blocks(iarray,key_size)
+    transposed_blocks = transpose_blocks(cipher_text,key_size)
 
     #Now break each block separately
 
     solved_blocks = []
 
-    for block_num in range(0,len(iarray)):
-        solved_blocks.append([])        
+    for block_num in range(0,len(cipher_text)):
+        solved_blocks.append(bytearray(0))        
 
 
     for block_num in range(0,key_size):
-        print("Solving block: " +str(block_num))
+        #print("Solving block: " +str(block_num))
         
         this_solve = break_single_char_XOR(transposed_blocks[block_num])
         
-        solved_blocks[block_num]= this_solve[2]
+        solved_blocks[block_num].extend(this_solve[2])
 
-        print("Block " + str(block_num) + " was broken with key " + str(this_solve[1]))
+        #print("Block " + str(block_num) + " was broken with key " + str(this_solve[1]))
 
         
     #Put it all back together
     
-    total_solve = []
+    total_solve = bytearray(0)
     
     curr_spot = 0
 
-    while (curr_spot*key_size < len(iarray)):
+    while (curr_spot*key_size < len(cipher_text)):
         for block_num in range(0,key_size):
-            if(curr_spot*key_size + block_num < len(iarray)):
+            if(curr_spot*key_size + block_num < len(cipher_text)):
                 total_solve.append(solved_blocks[block_num][curr_spot])
         
         curr_spot +=1
@@ -103,7 +101,7 @@ def break_repeating_with_keysize(iarray, key_size):
 
     return total_solve
 
-def transpose_blocks(iarray, k):
+def transpose_blocks(barray, k):
 
     transposed_blocks = []
 
@@ -112,8 +110,8 @@ def transpose_blocks(iarray, k):
 
         curr_spot = 0
 
-        while(curr_spot*k + block_num < len(iarray)):
-            transposed_blocks[block_num].append(iarray[curr_spot*k + block_num])
+        while(curr_spot*k + block_num < len(barray)):
+            transposed_blocks[block_num].append(barray[curr_spot*k + block_num])
             curr_spot +=1
 
     return transposed_blocks
@@ -129,11 +127,9 @@ def detect_single_XOR(file_string):  #detects a single 1char XOR encrypted line 
     with open(file_string) as file:
         hlines = file.read().splitlines()
 
-        lines=[]
-        for x in range(0,len(hlines)):
-            lines.append(text_conversion.hexstring_to_intarray(hlines[x]))
-
-        min_score= 10000*len(lines[1])
+        lines=[bytearray.fromhex(line) for line in hlines]
+        
+        min_score= 100000*len(lines[1])
         min_key = 0
         min_score_text = ""
 
@@ -144,11 +140,11 @@ def detect_single_XOR(file_string):  #detects a single 1char XOR encrypted line 
             if (decode[0] < min_score):
                 min_score = decode[0]
                 min_key = decode[1]
-                min_score_text = text_conversion.intarray_to_string(decode[2])
+                min_score_text = decode[2]
                 min_score_line = x
     
     print("The encoded line is " + str(min_score_line) + " which was encoded with the key " + str(min_key) + ".")
-    print("The encrypted text was: " + min_score_text)
+    print("The encrypted text was: " + min_score_text.decode())
 
 
 

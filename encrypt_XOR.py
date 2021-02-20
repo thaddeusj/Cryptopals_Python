@@ -18,14 +18,14 @@ def fixed_XOR(array1,array2):
 
     return XOR
 
-def hexstring_XOR(s1,s2):
+# def hexstring_XOR(s1,s2):
 
-    i1 = text_conversion.hexstring_to_intarray(s1)
-    i2 = text_conversion.hexstring_to_intarray(s2)
+#     i1 = text_conversion.hexstring_to_intarray(s1)
+#     i2 = text_conversion.hexstring_to_intarray(s2)
 
-    iXOR = fixed_XOR(i1,i2)
+#     iXOR = fixed_XOR(i1,i2)
 
-    return text_conversion.intarray_to_hexstring(iXOR)
+#     return text_conversion.intarray_to_hexstring(iXOR)
 
 
 def singlechar_key_XOR(key,plaintext):
@@ -49,4 +49,4 @@ def repeating_XOR(key,plaintext):
         for x in range(0,len(plaintext) - currentlength):
             key_array.append(key[x])
     
-    return fixed_XOR(key_array,plaintext)
+    return bytearray_XOR(key_array,plaintext)
