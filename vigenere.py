@@ -1,15 +1,15 @@
 import text_conversion
-import encrypt_XOR
+import XOR_tools
 from operator import itemgetter
 
-def break_single_char_XOR(i):
+def break_single_char_XOR(cipher_text):
 
-    min_score = 100000*len(i)
+    min_score = 100000*len(cipher_text)
     min_score_key = 0
     
     for x in range(0,256):
         
-        text = encrypt_XOR.singlechar_key_XOR(x,i)
+        text = XOR_tools.bytearray_XOR(bytearray([x for y in range(0,len(cipher_text))]),cipher_text)
 
         s = score_text(text)
 
@@ -19,9 +19,9 @@ def break_single_char_XOR(i):
 
         #print("The score with key " + str(x) + " is " + str(s))
 
-    min_key_array = bytearray([min_score_key for x in range(0,len(i))])
+    min_key_array = bytearray([min_score_key for x in range(0,len(cipher_text))])
         
-    return [min_score,min_score_key,encrypt_XOR.bytearray_XOR(i,min_key_array)]
+    return [min_score,min_score_key,XOR_tools.bytearray_XOR(cipher_text,min_key_array)]
 
 
 def break_repeating_key_XOR(cipher_text): #we'll handle i/o processing separately for this one. This will break a repeating XOR cipher on a byte array.
