@@ -2,7 +2,7 @@ import XOR_tools
 import vigenere
 
 import cryptography
-import ECB
+import modes
 
 import base64
 from itertools import chain
@@ -70,7 +70,7 @@ def challenge7(file_string):
 
         cipher_text.extend(chain.from_iterable([bytearray(base64.b64decode(line)) for line in lines]))
 
-    print(ECB.AES_ECB_decrypt(cipher_text,b"YELLOW SUBMARINE"))
+    print(modes.my_ECB.AES_ECB_decrypt(cipher_text,b"YELLOW SUBMARINE"))
 
 def challenge8(file_string):
 
@@ -82,10 +82,7 @@ def challenge8(file_string):
         for line in lines:
             cipher_texts.append(bytearray.fromhex(line))
     
-    detected_line = ECB.detect_ECB_mode(cipher_texts,16)
+    detected_line = modes.my_ECB.detect_ECB_mode(cipher_texts,16)
 
     print("The ECB encoded string is string " + str(detected_line[0]+1) + " out of " + str(len(lines)) + ".")  #+1 to account for 0 indexing.
     print("The detected line was " + str(bytearray.hex(detected_line[1])) + ".")
-    
-
-
