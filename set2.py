@@ -97,3 +97,45 @@ def challenge11(m,choice):   #We want an ECB/CBC Oracle
         print("The correct mode was CBC.")
     else:
         print("The correct mode was ECB.")
+
+
+def challenge12():      #Now I do get to choose what I feed into the plaintext.
+                        #Parameters:
+                        #   - There is a fixed secret.
+                        #   - I can inject arbitrary text before the secret. 
+                        #   - I will be assuming that there is fixed size offsets at the beginning (and end, but that doesn't matter) if the plaintext.
+                        #This last assumption isn't a part of the challenge, but it does look like it resembles real world conditions for this attack.
+
+                        #Our steps will be:
+                        #   1) Discover the block size. (We know it, but we might not know it in the field.)
+                        #   2) Check that it's ECB. Now that I have the ability to inject arbitrary text,
+                        #       I can choose a string of a's that's guaranteed to have lots of collisions.
+                        #   3) Determine the offset.
+                        #   4) Break the secret, as described in the challenge.
+
+    b64_cipher_text = "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK"
+
+
+    offset = random.randint(0,16)
+    key = os.urandom(16)
+
+
+
+    #We need to find the block length first.
+    #The idea here is to increase the size of our input string until the cipher_text length jumps twice.
+    #The block length will be the difference of the two sizes we got: ex. if it jumped at us feeding 5 and 21 characters, then
+    #   the length will be 21-5 = 16. This works because padding will force everyhing from 5 to 20 to have the same length, and
+    #   then when we hit 21, we've filled up our current block and the padding pushes it back. (If we're doing pkcs#7)
+
+    ECB_hook = modes.ECB_to_attack(offset,key,bytearray(base64.b64decode(b64_cipher_text)))
+
+    attack = modes.ECB_injection_attack(ECB_hook)
+
+    attack.find_block_length()
+    attack.break_ECB()
+    attack.find_offset(attack.block_length)
+
+    print(attack.offset)
+    print(attack.ECB_hook.offset)
+
+

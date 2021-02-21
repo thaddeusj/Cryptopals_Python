@@ -31,10 +31,163 @@ class ECB_CBC_oracle:   #For later
         if (collisions > sensitivity*len(blocks)):
             guess = 1
 
-        print("The number of collisions was: " + str(collisions))
-        print("There are " + str(len(blocks)) + " blocks.")
+        #print("The number of collisions was: " + str(collisions))
+        #print("There are " + str(len(blocks)) + " blocks.")
 
         return guess
+
+class ECB_to_attack:                        #I'm going to blackbox the encryption and padding here.
+                                            #So the attack just needs to hook into this class.
+    def __init__(self,offset,key,text):
+        self.text = text
+        self.offset = offset
+        self.key = key
+
+        self.cipher = Cipher(algorithms.AES(key),modes.ECB())
+
+    def pad(self,text):
+        return padding.pkcs7_padding(text,len(self.key))
+
+    def encrypt(self,injection):
+        offset_text = bytearray(os.urandom(self.offset))
+        offset_text.extend(injection)
+        offset_text.extend(self.text)
+        padded_text = self.pad(offset_text)
+
+        encryptor = self.cipher.encryptor()
+
+
+        cipher_text = encryptor.update(padded_text) + encryptor.finalize()
+
+        return cipher_text
+
+
+
+class ECB_injection_attack:
+    def __init__(self,ECB_hook):
+        self.ECB_hook = ECB_hook
+
+    def find_block_length(self):
+
+        cipher_without_padding = self.ECB_hook.encrypt(bytearray(0))
+
+        current_length = len(cipher_without_padding)
+
+        first_increase = 0
+        second_increase = 0
+
+        for x in range(1,100):
+
+            if second_increase > 0:
+                break
+
+            cipher_with_padding = self.ECB_hook.encrypt(bytearray(x))
+
+            length = len(cipher_with_padding)
+
+            if length > current_length:
+                current_length = length
+                
+                if first_increase == 0:
+                    first_increase = x
+                elif second_increase == 0:
+                    second_increase = x
+            
+            
+
+        self.block_length = second_increase - first_increase
+
+    def find_offset(self):
+
+        #We're going to prepend two blocks of A onto the cipher text, and then start pushing it forward until blocks 2 and 3 match.
+        #Repeat that with Bs, to avoid situations where the cipher text starts with a bunch of 0s.
+        #On of the two will work, since the plaintext can't start with both A and B.
+        #Take the higher of the two if they don't agree, since if one is lower then the first few terms of the text are that char.
+
+        #I am assuming the offset is at most one block.
+
+        A_total = 0
+        B_total = 0
+
+
+        #A-Test
+
+        match = False
+        trial_num = 0
+
+        while(not match):
+
+            attack_text = bytearray(0)
+
+            if(trial_num > 0):
+                attack_text.extend(bytearray([1 for x in range(0,trial_num)]))
+            
+            attack_text.extend(bytearray([0 for x in range(0,2*self.block_length)]))
+
+            cipher = self.ECB_hook.encrypt(attack_text)
+
+            if cipher[self.block_length:2*self.block_length] == cipher[2*self.block_length:3*self.block_length]:
+                match = True
+                A_total = trial_num
+
+            trial_num +=1
+
+        #B-Test
+
+        match = False
+        trial_num = 0
+
+        while(not match):
+
+            attack_text = bytearray(0)
+
+            if(trial_num > 0):
+                attack_text.extend(bytearray([2 for x in range(0,trial_num)]))
+            
+            attack_text.extend(bytearray([1 for x in range(0,2*self.block_length)]))
+
+
+            cipher = self.ECB_hook.encrypt(attack_text)
+
+            if cipher[self.block_length:2*self.block_length] == cipher[2*self.block_length:3*self.block_length]:
+                match = True
+                B_total = trial_num
+
+            trial_num +=1
+
+
+        self.offset = self.block_length - max(A_total,B_total)
+
+
+    def break_ECB(self):
+        #First, we'll check if it is ECB encrypted or not. (It is, but we should check.)
+
+        self.find_block_length()
+
+        ECB_check_text = bytearray(10*self.block_length)
+
+        if ECB_CBC_oracle.detect(self.ECB_hook.encrypt(ECB_check_text),self.block_length) != 1:
+            raise Exception("This is not ECB encrypted or you do not have the right block length.")
+        
+        #Now that we know it's in ECB, we need to identify the offset length.
+
+        self.find_offset()
+
+        #Now we can mount the attack.
+
+        #We're going to prepend block_length - offset + block_length - 1 characters (I'll be using 0) to the data to capture the first byte of the secret.
+        #Then we'll start computing the encryption with the second block being all versions of 000...00X.
+        #Once we hit the correct encryption for the second block, we've found our secret. Move over one byte.
+
+        #The tricky part will come when we've found the first byte.
+
+        #In this, we aren't appending any garbage to the end, so it'll end when we've finished capturing the padding.
+        #I'm not sure how you'd handle if each encryption had different garbage at the end. I guess you'd need to do some sort of offset calculation at the end, similar to the initial offset calculation.
+
+        
+
+
+
 
 
 class my_CBC:   #For now, we're tying this explicitly to AES. Later on, if necessary, I'll refactor to allow for different encryption primitives.
@@ -72,7 +225,6 @@ class my_CBC:   #For now, we're tying this explicitly to AES. Later on, if neces
 
 
 class my_ECB:  #For now, we're tying this explicitly to AES. Later on, if necessary, I'll refactor to allow for different encryption primitives.
-
 
     @staticmethod
     def AES_ECB_encrypt(plaintext,key): #We're going to assume that the plaintext has already been padded.
