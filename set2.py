@@ -99,11 +99,12 @@ def challenge11(m,choice):   #We want an ECB/CBC Oracle
         print("The correct mode was ECB.")
 
 
-def challenge12():      #Now I do get to choose what I feed into the plaintext.
+def challenge12(b64_cipher_text = "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK"):      
+                        #Now I do get to choose what I feed into the plaintext.
                         #Parameters:
                         #   - There is a fixed secret.
                         #   - I can inject arbitrary text before the secret. 
-                        #   - I will be assuming that there is fixed size offsets at the beginning (and end, but that doesn't matter) if the plaintext.
+                        #   - I will be assuming that there iare fixed size offsets at the beginning (but not end) of the plaintext.
                         #This last assumption isn't a part of the challenge, but it does look like it resembles real world conditions for this attack.
 
                         #Our steps will be:
@@ -113,12 +114,11 @@ def challenge12():      #Now I do get to choose what I feed into the plaintext.
                         #   3) Determine the offset.
                         #   4) Break the secret, as described in the challenge.
 
-    b64_cipher_text = "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK"
-
 
     offset = random.randint(0,16)
     key = os.urandom(16)
 
+    print("The plaintext has " + str(len(bytearray(base64.b64decode(b64_cipher_text)))) + " bytes.")
 
 
     #We need to find the block length first.
@@ -131,11 +131,9 @@ def challenge12():      #Now I do get to choose what I feed into the plaintext.
 
     attack = modes.ECB_injection_attack(ECB_hook)
 
-    attack.find_block_length()
     attack.break_ECB()
-    attack.find_offset(attack.block_length)
 
-    print(attack.offset)
-    print(attack.ECB_hook.offset)
+    print(attack.plaintext.decode())
 
-
+    #I have verifiably broken the challenge text.
+    #I have also verified it with other strings. This really does it. Repeatably.

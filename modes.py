@@ -184,7 +184,61 @@ class ECB_injection_attack:
         #In this, we aren't appending any garbage to the end, so it'll end when we've finished capturing the padding.
         #I'm not sure how you'd handle if each encryption had different garbage at the end. I guess you'd need to do some sort of offset calculation at the end, similar to the initial offset calculation.
 
+        print("The cipher text has " + str(len(self.ECB_hook.encrypt(bytearray(0)))) + " bytes.")
+        print("There are " + str(self.offset) + " bytes of offset.")
+
+        total_bytes_in_plaintext = len(self.ECB_hook.encrypt(bytearray(0))) - self.offset  #This includes padding.
+
+        known_bytes = bytearray(0)
+
+        plaintext = bytearray(0)
+
+        print(total_bytes_in_plaintext)
+
+        into_padding = False
+
+        while(not into_padding):
+
+            attack_text = bytearray(self.block_length - self.offset + self.block_length - 1 - (len(known_bytes)%self.block_length))
+
+            current_block = int(len(known_bytes)/self.block_length) + 1
+
+            target = self.ECB_hook.encrypt(attack_text)[current_block*self.block_length:(current_block +1)*self.block_length]
+
+            attack_text.extend(known_bytes)
+
+            for x in range(0,256):
+
+                attack_text.append(x)
+
+                block_with_x = self.ECB_hook.encrypt(attack_text)[current_block*self.block_length:(current_block +1)*self.block_length]
+
+                # if x == 0 and len(known_bytes) == 139:
+                #     print("The target block is: " + str(target))
+
+                # if len(known_bytes) == 139:
+                #     print("The block with x is: " + str(block_with_x))
+
+                if block_with_x == target:
+                    known_bytes.append(x)
+                    break
+
+                attack_text.pop()
+
+                if x == 255:                    #If it goes through the loop without matching, that's because the cipher text immediately after the known block depends on length.
+                                                #I.e., we've run into padding. This will happily gobble up the first padding byte.
+                                                #Actually, since we're looking at the modified text, this should be gobbling up the only padding byte.
+                                                #We're setting up target so that the last 7 bytes of plaintext are in a block, which then get padded.
+                                                #So we'll capture that single padding block.
+                                                #This also explains why we can't push into the next block: we're creating a new padding block at that point and I have no control over that block.
+                    into_padding = True
         
+        known_bytes.pop()                       #Because we've grabbed one byte of padding, we need to pop it off first before sending the plaintext on.
+
+        self.plaintext = known_bytes
+
+
+
 
 
 

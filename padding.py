@@ -9,4 +9,9 @@ def pkcs7_padding(text,block_size):  #Takes a bytearray to pad.
         padded_text.extend([missing_bytes for x in range(0,missing_bytes)])
 
     return padded_text
+
+def pkcs7_unpad(text):
+    pad_length = text[len(text)-1]
+
+    return text[0:len(text)-pad_length]
     
