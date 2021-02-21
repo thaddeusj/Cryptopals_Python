@@ -1,4 +1,4 @@
-def pkcd7_padding(text,block_size):  #Takes a bytearray to pad.
+def pkcs7_padding(text,block_size):  #Takes a bytearray to pad.
 
     padded_text = text
 
