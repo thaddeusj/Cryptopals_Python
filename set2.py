@@ -174,3 +174,9 @@ def challenge14(target_bytes):
     challenge12(target_bytes)
 
     #Turns out, I got a little bit ahead of myself. I managed to do challenge 14 at the same time as 12.
+
+def challenge16():
+
+    cbc_attack = modes.CBC_bitflip_attack()
+
+    cbc_attack.ATTACK()

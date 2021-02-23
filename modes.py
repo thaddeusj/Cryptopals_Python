@@ -425,6 +425,60 @@ class my_CBC:   #For now, we're tying this explicitly to AES. Later on, if neces
         return plaintext
 
 
+class CBC_bitflip_attack():
+
+    def __init__(self):
+        self.key = os.urandom(16)
+
+        self.cipher = Cipher(algorithms.AES(self.key),modes.CBC(os.urandom(16)))
+
+    def encrypt_string(self,string):
+        #First, we need to quote out = and ; from this string.
+
+        no_equals = string.replace("=","\x22=\x22")
+        no_semicolon = no_equals.replace(";","\x22;\x22")
+
+        encryptor = self.cipher.encryptor()
+
+        return (encryptor.update(padding.pkcs7_padding(bytearray("comment1=cooking%20MCs;userdata=" + no_semicolon + ";comment2=%20like%20a%20pound%20of%20bacon",'utf-8'),16)) + encryptor.finalize())
+
+    def is_admin(self,cipher_text):
+
+        decryptor = self.cipher.decryptor()
+
+        plaintext = decryptor.update(cipher_text) + decryptor.finalize()
+        plaintext_string = plaintext.decode()
+
+        if plaintext_string.find(";admin=true;") == -1:
+            return False
+        else:
+            return True
+
+    def ATTACK(self):
+        barray_to_flip = self.encrypt_string("aaaaaaaaaaaaaaaa")
+
+        block_to_manipulate = barray_to_flip[16:32]
+        manipulated_block = XOR_tools.bytearray_XOR(block_to_manipulate,XOR_tools.bytearray_XOR(bytearray("aaaaaaaaaaaaaaaa",'utf-8'),bytearray(";admin=true;aaaa",'utf-8')))
+
+        manipulated_cipher = bytearray(barray_to_flip[0:16])
+        manipulated_cipher.extend(manipulated_block)
+        manipulated_cipher.extend(barray_to_flip[32:len(barray_to_flip)])
+
+
+        dec = self.cipher.decryptor()
+        check_man = dec.update(manipulated_cipher)
+
+        print(check_man[32:48].decode('utf-8'))             #Some wonkiness here. The second block probably won't decode to a valid string. Depending on how things work on the database, that might actually kill this.
+
+        return manipulated_cipher
+
+    
+
+
+
+
+
+
 
 class my_ECB:  #For now, we're tying this explicitly to AES. Later on, if necessary, I'll refactor to allow for different encryption primitives.
 

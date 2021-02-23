@@ -27,4 +27,5 @@ def pkcs7_validate(text):
             raise Exception("Invalid padding!")
 
     return 1
+
     
