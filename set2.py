@@ -136,4 +136,41 @@ def challenge12(b64_cipher_text = "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wI
     print(attack.plaintext.decode())
 
     #I have verifiably broken the challenge text.
-    #I have also verified it with other strings. This really does it. Repeatably.
+    #I have also verified it with other strings. This really does it. Repeatably.   
+
+
+def challenge13():
+
+    #My assumptions about the profiles:
+    #   - Profiles are stored in the email=blah&uid=blah&role=blah format.
+    #   - uids are not constant (So, I'm making this harder on myself, but more realistic.)
+    #   - There is no offset at the start of the data. This isn't actually a problem, since we already know how to find the length of such an offset and compensate.
+
+    #   - Idea for the attack: 
+    #       - We want to generate a valid profile with the last block being "user\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12". This will be the initial part of our payload.
+    #           - To do this, we'll send an attack of the form "aaaa@a.comuser\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12".
+    #           - This will give us a "valid" profile of the form "email=aaaa@a.comuser\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12\x12". The second block is our target block.
+    #           - Next, we generate profiles of the form "a", "aa", etc. until the last encrypted block matches our target block above.
+    #       - Next, send an attack of the form "aaaaaaaaaaadmin\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11"
+    #           - The second block in the cipher text will be the encryption of "admin\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11". This is our attack block.
+    #       - Lastly, replace the last block of our valid cipher text with the attack block. Remember that the second last block of our valid cipher text
+    #           is the encryption of "XXXXXXXXXXXrole=". So when we tack on our attack block, this will decrypt to "XXXXXXXXXXXrole=admin\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11"
+    #       - Since the padding gets stripped after decryption, we now have a cipher_text that decrypts to "stuff.... role=admin". Insert that into the database (I'm assuming this is the end goal here. What use is this cipher text otherwise?).
+    #           You should replace the valid cipher text you found earlier that ends in the user block. You now have a user profile with admin access. 
+    #           Even better, you know what email address
+    #       
+    #   So how can we defend against this attack? Well, forcing emails to only contain valid characters is a good start. Having unpredicatable uids would also make this much harder.
+    #   Of course, just not using ECB for this is the real answer.
+
+    profile_faker = modes.ECB_copypaste_attack(os.urandom(16))
+
+    forged_profile = profile_faker.ATTACK()
+
+    print("The email of the forged profile is " + forged_profile[0] + ".")
+
+    print("The profile it created is: " + profile_faker.decrypt_profile(forged_profile[1]).decode())
+
+def challenge14(target_bytes):
+    challenge12(target_bytes)
+
+    #Turns out, I got a little bit ahead of myself. I managed to do challenge 14 at the same time as 12.

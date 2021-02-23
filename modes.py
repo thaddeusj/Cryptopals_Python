@@ -1,6 +1,7 @@
 import cryptography
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import os
+import random
 
 import XOR_tools
 import padding
@@ -238,10 +239,157 @@ class ECB_injection_attack:
         self.plaintext = known_bytes
 
 
+class ECB_copypaste_attack:
+
+    def __init__(self, key):
+        self.key = key
+        self.cipher = Cipher(algorithms.AES(key),modes.ECB())
+        self.block_length = len(key)
+
+        self.current_uid = random.randint(0,10000)
+
+    def profile_for(self,email):            #I'm going to be a bit lazy here. Realistically, I should validate that this is an email address in creating the profile. (And, properly done, I should object to any weird characters.)
+                                            #Let's say that this is another assumption on the insecurity of the system.
+
+        sanitized_email = "".join(filter(lambda ch: ch not in "&=", email))
+
+        profile = {
+            "email": sanitized_email,
+            "uid": self.current_uid,
+            "role": "user"
+        }
+
+        self.current_uid +=1
+
+        return "email=" + profile["email"] + "&uid=" + profile["uid"].__str__()+ "&role=" + profile["role"]
+
+    def encrypt_profile(self,profile):
+        encryptor = self.cipher.encryptor()
+
+        encrypted_profile = encryptor.update(padding.pkcs7_padding(bytearray(profile,'utf-8'),len(self.key))) + encryptor.finalize()
+
+        return encrypted_profile
+
+    def decrypt_profile(self,encrypted_profile):
+        decryptor = self.cipher.decryptor()
+
+        decrypted_profile = padding.pkcs7_unpad(decryptor.update(encrypted_profile) + decryptor.finalize())
+
+        return decrypted_profile
+
+    def find_block_length(self):
+        base_length_cipher = self.encrypt_profile("a@a.com")
+
+        current_length = len(base_length_cipher)
+
+        first_increase = 0
+        second_increase = 0
+
+        for x in range(1,100):
+
+            if second_increase > 0:
+                break
+
+            attack_string = "".join(['a' for y in range(0,x)]) + "@a.com"
+
+            new_length_cipher = self.encrypt_profile(attack_string)
+
+            length = len(new_length_cipher)
+
+ 
+            if length > current_length:
+                current_length = length
+                
+                if first_increase == 0:
+                    first_increase = x
+                elif second_increase == 0:
+                    second_increase = x
+            
+            
+
+        return second_increase - first_increase
+
+    def ATTACK(self):
+        
+
+        #Step 1: find block length
+
+        block_length_1 = self.find_block_length()
+        block_length_2 = self.find_block_length()
+
+        block_length = max(block_length_1,block_length_2)   #Run it twice, in case the uid ticks up. If the uid changes size between the first and second
+                                                                                #   increase in the find_block_length function, it will cause the block length to register as 1 too small.
+                                                                                #It definitely won't tick up in size twice within anything we're going to do.
+
+        #Step 2: Construct a profile with valid, controlled prefix.
+        #           -Assumption: uids are sequential.
+        #               -If the credentials this produces aren't valid, one possible issue is that uid will have grown by a byte. In that case, running this a second time won't run into that issue.
+        
+        
+
+        prefix_attack_string = self.encrypt_profile(self.profile_for("aaaa@a.comuser\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c"))
+
+        decrypted_attack_string = self.decrypt_profile(prefix_attack_string)
+
+        print(decrypted_attack_string.decode())
+        
+        prefix_attack_block = prefix_attack_string[block_length:2*block_length]
+
+        found_valid_prefix = False
+        current_prefix_length = block_length + 1            #We want to avoid collisions with any texts we've sent before. In case the system won't create profiles for emails more than once.
+
+        target_prefix = bytearray(0)
+
+        while not found_valid_prefix:
+            current_prefix = "".join(["a" for y in range(0,current_prefix_length)]) + "@a.com"
+
+            current_encryptor = self.cipher.encryptor()
+
+            current_cipher = self.encrypt_profile(self.profile_for(current_prefix))
+
+            if current_cipher[len(current_cipher)-block_length:len(current_cipher)] == prefix_attack_block:
+                found_valid_prefix = True
+                target_prefix.extend(current_cipher[0:len(current_cipher) - block_length])
+
+                break
+
+            current_prefix_length += 1
+
+
+        email_of_admin_profile = "".join(["a" for x in range(0,current_prefix_length)]) + "@a.com"
+
+        #Step 3: Now we get to the fun part: craft the admin part.
+
+        current_prefix_blocks = int((current_prefix_length + (block_length - (current_prefix_length%block_length)))/block_length)
+
+        admin_attack_text = "".join(["a" for x in range(0,block_length*current_prefix_blocks)]) + "aaaa@a.comadmin\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b"
+
+        admin_attack_cipher = self.encrypt_profile(self.profile_for(admin_attack_text))
+
+
+        admin_block = admin_attack_cipher[current_prefix_blocks*block_length + block_length:current_prefix_blocks*block_length+2*block_length]
+
+        target_prefix.extend(admin_block)
+
+        forged_profile = target_prefix
+        return [email_of_admin_profile,forged_profile]
 
 
 
 
+    @staticmethod
+    def key_value_parser(str):              #We'll assume it's being fed valid input.
+
+        kv_pair_string = str.split("&")
+
+        kv_pairs = {}
+
+        for kv in kv_pair_string:
+            temp_kv = kv.split("=")
+
+            kv_pairs[temp_kv[0]] = temp_kv[1]
+
+        return kv_pairs
 
 
 class my_CBC:   #For now, we're tying this explicitly to AES. Later on, if necessary, I'll refactor to allow for different encryption primitives.
