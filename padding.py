@@ -26,6 +26,5 @@ def pkcs7_validate(text):
         if pad[x] != pad_length:
             raise Exception("Invalid padding!")
 
-    return 1
 
     

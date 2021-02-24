@@ -2,6 +2,7 @@ import cryptography
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import os
 import random
+import base64
 
 import XOR_tools
 import padding
@@ -474,7 +475,147 @@ class CBC_bitflip_attack():
 
     
 
+class CBC_padding_oracle_attack():
 
+    def __init__(self,key):
+
+        self.key = key
+        
+        
+
+    def set_up(self):
+        iv = os.urandom(16)
+
+        cipher = Cipher(algorithms.AES(self.key),modes.CBC(iv))
+
+        lines = []
+        byte_lines = []
+
+        with open("17.txt") as file:
+            lines = file.read().splitlines()
+
+            for line in lines:
+                byte_lines.append(bytearray(base64.b64decode(line)))
+        
+        line_num = random.randint(0,len(byte_lines)-1)
+
+        chosen_line = byte_lines[line_num]
+
+        enc = cipher.encryptor()
+
+        cipher_text = enc.update(padding.pkcs7_padding(chosen_line,16)) + enc.finalize()
+
+        return (iv,cipher_text)
+
+        
+
+    def decrypt(self,cipher_text,iv):
+        cipher = Cipher(algorithms.AES(self.key),modes.CBC(iv))
+
+        dec = cipher.decryptor()
+
+        plaintext = dec.update(cipher_text) + dec.finalize()
+
+        try:
+            padding.pkcs7_validate(plaintext)
+        except:
+            return False
+
+        return True
+
+    def actually_decrpyt(self,cipher_text,iv):
+        cipher = Cipher(algorithms.AES(self.key),modes.CBC(iv))
+
+        dec = cipher.decryptor()
+
+        plaintext = dec.update(cipher_text) + dec.finalize()
+
+        return plaintext
+
+    def ATTACK(self):
+        iv,cipher_text = self.set_up()
+
+
+        blocks = [cipher_text[x:x + 16] for x in range (0,len(cipher_text),16)]
+
+        plaintext = bytearray(0)
+
+        plaintext.extend(self.break_block(blocks[0],iv))
+
+        for x in range(1,len(blocks)):
+            plaintext.extend(self.break_block(blocks[x],blocks[x-1]))
+
+        return plaintext
+
+    def break_block(self, block, iv):
+
+        #Idea:
+        #       We're going to apply a bitflipping attack on the IV for this block, to get the block to have valid padding.
+        #       We'll run our edit from 0 to 255, finding all edits that result in valid padding.
+        #           There are only two possibilities: either 1 or 2 edits will result in valid padding. We'll need to distinguish between them.
+        #               The options are ...xxxxxxxxx and ...(x+1)......(x+1)
+        #
+        #               To do this, start editting the next byte without changing your current edits.
+        #               The first case will result in valid padding for all of the edits, whereas the second will only pad validly for 1 edit.
+        #               That means you can definitively say which of the two will get sent to ...xxxxxxxxxx, and what edit results in that.
+        #
+        #           Now that you've found your edits that result in the correct valid padding, you can extract the current byte.
+        #               The plaintext byte will be (edit byte) XOR (padding length). I.e., (edit byte) XOR (16 - current byte).
+
+        plaintext = bytearray(0)
+
+        current_byte = len(block)-1
+
+        while current_byte > -1:
+
+            postfix = bytearray(0)
+
+            if len(plaintext) > 0:          #Crafting the attack string.
+                                            #When decrypted, the plain text bytes are IV XOR Plaintext.
+                                            #To get valid padding, we're going to change the IV to IV XOR Plaintext XOR Padding
+                                            #When it decrypts, it will now compute IV XOR (IV XOR Plaintext XOR Padding) XOR Plaintext, giving us just the padding left.
+                pad = bytearray([(16 - current_byte) for y in range(0,len(plaintext))])
+
+                postfix.extend(XOR_tools.bytearray_XOR(XOR_tools.bytearray_XOR(plaintext,iv[len(iv)-len(plaintext):len(iv)]),pad))
+                
+            
+            valid_edits = []
+
+            for x in range(0,256):
+                attack_iv = bytearray(iv[0:current_byte])
+                attack_iv.extend(bytearray([x]))
+                attack_iv.extend(postfix)
+
+                if self.decrypt(block,attack_iv):
+                    valid_edits.append(x)
+
+                
+            if len(valid_edits) == 1:
+                plaintext.reverse()
+                plaintext.append((valid_edits[0]^iv[current_byte])^(16 - current_byte))
+                plaintext.reverse()
+
+            else:               #In this case, we've run into two valid edits. So, we now look for the valid edit that stays valid no matter how we edit the next byte. That's the edit we're looking for.
+
+                for x in valid_edits:
+                    for y in range(0,255):
+                        attack_iv = bytearray(iv[0:current_byte])
+                        attack_iv.pop()
+                        attack_iv.extend(bytearray([y,x]))
+                        attack_iv.extend(postfix)
+
+                        if not self.decrypt(block,attack_iv):
+                            valid_edits.remove(x)    
+                            break
+
+                plaintext.reverse()
+                plaintext.append((valid_edits[0]^iv[current_byte])^(16 - current_byte))
+                plaintext.reverse()
+
+
+            current_byte -=1
+
+        return plaintext
 
 
 
