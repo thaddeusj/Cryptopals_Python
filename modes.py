@@ -424,6 +424,18 @@ class my_CBC:   #For now, we're tying this explicitly to AES. Later on, if neces
             plaintext.extend(XOR_tools.bytearray_XOR(cipher_text[x-len(self.key):x],my_ECB.AES_ECB_decrypt(cipher_text[x:x+len(self.key)],self.key)))
 
         return plaintext
+        
+    def verified_decrypt(self,cipher_text):
+
+        #In this context, we are assuming that the plaintext is ascii text. In particular, we will assume that the text cannot contain any high ascii values.
+
+        plaintext = self.decrypt(cipher_text)
+
+        for char in plaintext:
+            if char > 127:
+                raise Exception(plaintext)
+
+        return plaintext
 
 
 class CBC_bitflip_attack():
@@ -523,14 +535,14 @@ class CBC_padding_oracle_attack():
 
         return True
 
-    def actually_decrpyt(self,cipher_text,iv):
-        cipher = Cipher(algorithms.AES(self.key),modes.CBC(iv))
+    # def actually_decrpyt(self,cipher_text,iv):
+    #     cipher = Cipher(algorithms.AES(self.key),modes.CBC(iv))
 
-        dec = cipher.decryptor()
+    #     dec = cipher.decryptor()
 
-        plaintext = dec.update(cipher_text) + dec.finalize()
+    #     plaintext = dec.update(cipher_text) + dec.finalize()
 
-        return plaintext
+    #     return plaintext
 
     def ATTACK(self):
         iv,cipher_text = self.set_up()

@@ -46,6 +46,41 @@ def challenge26():
     print(CTR.CTR_transform(editted_cookie).decode())
 
 
+def challenge27():
+    key = bytearray(os.urandom(16))
+
+    CBC = modes.my_CBC(key,key)
+
+    plaintext = bytearray("ring around the rosie, pocket full of posie, ashes ashes we all fall down",'utf-8')
+
+    cipher = CBC.encrypt(plaintext)
+
+    new_cipher = cipher[0:16]
+    new_cipher.extend(bytearray(16))
+    new_cipher.extend(cipher)
+
+    modified_plaintext = bytearray(0)
+
+    try:
+        CBC.verified_decrypt(new_cipher)
+    except Exception as e:  
+        modified_plaintext = e.args[0]
+
+    if len(modified_plaintext) == 0:
+        raise Exception("We got unlucky.")
+
+    p_1 = modified_plaintext[0:16]
+    p_3 = modified_plaintext[32:48]
+
+    guessed_key = XOR_tools.bytearray_XOR(p_1,p_3)
+
+    print("Our attack produced the key: " + str(guessed_key))
+    print("The actual key was: " + str(CBC.key))
+    print("We found it: " + str(CBC.key == guessed_key))
+
+
+
+
 
 
 
