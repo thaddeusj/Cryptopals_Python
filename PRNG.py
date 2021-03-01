@@ -222,8 +222,25 @@ class MT19937_copy:        #Copy MT19937 state array, with default parameters.
         return x
 
         
-        
+class PRNG_stream_cipher():
 
+    def __init__(self,PRNG,seed):
+        self.PRNG = PRNG
+        self.seed = seed
+
+
+    def transform(self,text):
+        PRNG = self.PRNG(self.seed)
+
+        key = bytearray(0)
+        output = bytearray(0)
+
+        for x in range(0,len(text)):
+            key.append(PRNG.rand()%(2**8))
+            
+            output.append(key[x]^text[x])
+
+        return output
 
 
         

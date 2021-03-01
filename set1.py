@@ -70,7 +70,7 @@ def challenge7(file_string):
 
         cipher_text.extend(chain.from_iterable([bytearray(base64.b64decode(line)) for line in lines]))
 
-    print(modes.my_ECB.AES_ECB_decrypt(cipher_text,b"YELLOW SUBMARINE").decode())
+    return modes.my_ECB.AES_ECB_decrypt(cipher_text,b"YELLOW SUBMARINE")
 
 def challenge8(file_string):
 
