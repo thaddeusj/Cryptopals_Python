@@ -10,6 +10,7 @@ import CTR_mode
 import PRNG
 import set1
 import XOR_tools
+from SHA1 import SHA1
 
 def challenge25():
     key = os.urandom(16)
@@ -80,6 +81,61 @@ def challenge27():
 
 
 
+def challenge29():
+
+    key = bytearray(os.urandom(16))
+
+    message = bytearray("comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon",'utf-8')
+
+    MAC = SHA1.secret_prefix_MAC(key,message)
+
+
+    #Now we want to forge this with ;admin = true; tacked on.
+    #Original message is 77 bytes long.
+
+    a = int.from_bytes(MAC[0:32],"big")
+    b = int.from_bytes(MAC[32:64],"big")
+    c = int.from_bytes(MAC[64:96],"big")
+    d = int.from_bytes(MAC[96:128],"big")
+    e = int.from_bytes(MAC[128:160],"big")
+
+    #while we already know the key length is 16 bytes, that's not realistic. We could try 16 and 32 first, since those are probably the most common options.
+    #Instead, I'm opting to just do a search for the right key length.
+
+    for key_length in range(16,17):
+        ml = (key_length + 77)*8
+
+        extension_length = int(((440 - ml)%512)/8)
+        extension = bytearray(b'\x80')
+        extension.extend(bytearray(extension_length))
+        extension.extend(bytearray((ml).to_bytes(8,"big")))
+
+
+        attack_string = extension
+        attack_string.extend(bytearray(";admin=true;",'utf-8'))
+
+        forged_MAC = SHA1.sha1(attack_string,a,b,c,d,e)
+
+        print(forged_MAC.hex())
+
+        #Now, we check if we've successfully forged this.
+
+        fullstring = message
+        fullstring.extend(attack_string)
+
+        correct_MAC = SHA1.secret_prefix_MAC(key,fullstring)
+
+        print(correct_MAC.hex())
+
+        print("The correct string is: ")
+        print(fullstring)
+
+        print("The attack string is: ")
+        print(attack_string)
+
+        if forged_MAC == correct_MAC:
+            print("Success!")
+            break
 
 
 
