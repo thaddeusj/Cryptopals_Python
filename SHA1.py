@@ -4,13 +4,7 @@ import hashlib
 import os
 
 class SHA1:
-
-    h0 = 0x67452301
-    h1 = 0xEFCDAB89
-    h2 = 0x98BADCFE
-    h3 = 0x10325476
-    h4 = 0xC3D2E1F0
-
+    
     @staticmethod
     def left_rotate(n,m,x): #Left rotates an m/8 byte bytearray x by n
         i = int.from_bytes(x,byteorder = "big")
@@ -21,26 +15,28 @@ class SHA1:
 
     
     @staticmethod
-    def sha1(message, h0 =  0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0):
+    def sha1(message, h0 =  0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0, ml = 0):
         '''message should be a bytearray
         
         This code should NEVER EVER EVER be used in practice. This has not been auditted for security or accuracy. Etc.'''
-
-        ml = len(message)*8
-
+        if ml == 0:
+            ml = len(message)*8
+        
         #Pre-processing
 
         m = bytearray(message)
 
         m.extend(bytearray(b'\x80'))
-        extension_length = int(((440 - ml)%512)/8)
+        extension_length = int(((448 - len(m)*8)%512)/8)
         extension = bytearray(extension_length)
-        m.extend( extension )
+        m.extend(extension)
         m.extend(bytearray((ml).to_bytes(8,"big")))
-        
+
+       
         chunks = [m[x:x+64]  for x in range(0,len(m),64)]
 
-        
+        #Hash
+
         for chunk in chunks:
             w = [chunk[x:x+4] for x in range(0,len(chunk),4)]
 
@@ -125,7 +121,9 @@ class SHA1:
 
     @staticmethod
     def secret_prefix_MAC(key,message):
-        m = key
+
+        m = bytearray(key)
         m.extend(message)
+
 
         return SHA1.sha1(m)
