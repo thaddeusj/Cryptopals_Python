@@ -10,7 +10,7 @@ import CTR_mode
 import PRNG
 import set1
 import XOR_tools
-from SHA1 import SHA1
+from Hashes import SHA1
 
 def challenge25():
     key = os.urandom(16)
@@ -124,7 +124,7 @@ def challenge29():
         fullstring.extend(attack_string)
 
         correct_MAC = SHA1.secret_prefix_MAC(key,fullstring)
-        
+            
         if forged_MAC == correct_MAC:
             print("Success!")
 
