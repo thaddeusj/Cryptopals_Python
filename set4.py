@@ -12,6 +12,8 @@ import set1
 import XOR_tools
 from Hashes import SHA1, MD4
 
+import web
+
 def challenge25():
     key = os.urandom(16)
     CTR = CTR_mode.my_CTR(key,os.urandom(8))
@@ -173,6 +175,10 @@ def challenge30():
             print(forged_MAC.hex())
 
             break
+
+
+class challenge30():
+    #This one needs me to set up a web service. So, yikes.
 
     
 
