@@ -131,7 +131,11 @@ class SHA1:
 
 class MD4:
     @staticmethod
-    def MD4(message, ml = 0):
+    def MD4(message,A = 0x67452301,
+        B = 0xefcdab89,
+        C = 0x98badcfe,
+        D = 0x10325476,
+        ml = 0):
 
         '''message should be a bytearray
         
@@ -153,12 +157,6 @@ class MD4:
 
 
         m.extend(length_padding)  #This might be a problem. We'll revist this.
-        
-
-        A = 0x67452301
-        B = 0xefcdab89
-        C = 0x98badcfe
-        D = 0x10325476
 
         chunks = [m[x:x+64] for x in range(0,len(m),64)]
 
@@ -302,3 +300,11 @@ class MD4:
 
         print("A-OK")
 
+    
+    @staticmethod
+    def secret_prefix_MAC(key,message):
+
+        m = bytearray(key)
+        m.extend(message)
+
+        return MD4.MD4(m)

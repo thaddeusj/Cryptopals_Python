@@ -10,7 +10,7 @@ import CTR_mode
 import PRNG
 import set1
 import XOR_tools
-from Hashes import SHA1
+from Hashes import SHA1, MD4
 
 def challenge25():
     key = os.urandom(16)
@@ -133,7 +133,46 @@ def challenge29():
             break
 
 
+def challenge30():
 
+    kl = random.randint(1,32)
+    key = bytearray(os.urandom(kl))
+
+    message = bytearray("comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon",'utf-8')
+
+    MAC = MD4.secret_prefix_MAC(key,message)
+
+    A = int.from_bytes(MAC[0:4],"little")
+    B = int.from_bytes(MAC[4:8],"little")
+    C = int.from_bytes(MAC[8:12],"little")
+    D = int.from_bytes(MAC[12:16],"little")
+
+    for key_length in range(1,33):
+
+        ml = (key_length + 77)*8
+
+        padding_length = int(((440 - ml)%512)/8)
+        glue_padding = bytearray(b'\x80')
+        glue_padding.extend(bytearray(padding_length))
+        glue_padding.extend(bytearray((ml).to_bytes(8,"little")))
+
+
+        attack_string =bytearray(";admin=true;",'utf-8')
+
+        forged_MAC = MD4.MD4(attack_string,A,B,C,D,ml + len(glue_padding)*8 + len(attack_string)*8)
+
+        fullstring = bytearray(message)
+        fullstring.extend(glue_padding)
+        fullstring.extend(attack_string)
+
+        correct_MAC = MD4.secret_prefix_MAC(key,fullstring)
+            
+        if forged_MAC == correct_MAC:
+            print("Success!")
+
+            print(forged_MAC.hex())
+
+            break
 
     
 
