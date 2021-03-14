@@ -124,21 +124,20 @@ class SHA1:
         
         actual_key = bytearray(key)
 
-        if len(key) > 20:
+        if len(key) > 64:
             actual_key = SHA1.sha1(actual_key)
 
-        if len(key) < 20:
-            while len(actual_key) < 20:
+        if len(key) < 64:
+            while len(actual_key) < 64:
                 actual_key.extend(b'\x00')
         
-        outer_key = XOR_tools.bytearray_XOR(actual_key,[0x5c for x in range(0,20)])
-        inner_key = XOR_tools.bytearray_XOR(actual_key,[0x36 for x in range(0,20)])
-
-        import pdb; pdb.set_trace()
+        outer_key = XOR_tools.bytearray_XOR(actual_key,[0x5c for x in range(0,64)])
+        inner_key = XOR_tools.bytearray_XOR(actual_key,[0x36 for x in range(0,64)])
         
         inner_hash = SHA1.secret_prefix_MAC(inner_key,message)
+        outer_hash = SHA1.secret_prefix_MAC(outer_key,inner_hash)
 
-        return SHA1.secret_prefix_MAC(outer_key,inner_hash)
+        return outer_hash
 
     @staticmethod
     def secret_prefix_MAC(key,message):
@@ -153,21 +152,21 @@ class SHA1:
     def HMAC_test():
         import hmac
 
-        for x in range(0,100):
+        for x in range(0,10000):
             print(x)
 
             key = x.to_bytes(8,"big")
             message = x.to_bytes(8,"big")
 
-            MAC = hmac.new(key,message,hashlib.sha1)
+            MAC = hmac.digest(key,message,hashlib.sha1)
             my_MAC = SHA1.HMAC(key,message)
             
             print("Correct MAC:")
-            print(MAC.hexdigest())
+            print(MAC.hex())
             print("My MAC:")
             print(my_MAC.hex())
 
-            assert MAC.hexdigest() == my_MAC.hex()
+            assert MAC.hex() == my_MAC.hex()
 
 class MD4:
     @staticmethod
