@@ -181,7 +181,7 @@ class SHA1:
             if (signature[b] != proposed_signature[b]):
                 return False
 
-            time.sleep(0.1)
+            time.sleep(0.05)
 
         return True
 

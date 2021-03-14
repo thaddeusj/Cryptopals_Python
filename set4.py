@@ -177,8 +177,59 @@ def challenge30():
             break
 
 
-class challenge30():
+def challenge31(file_name):
     #This one needs me to set up a web service. So, yikes.
+
+    url_prefix = "http://127.0.0.1:8080/test?file=" + file_name +"&signature="
+
+    import httplib2
+
+    h = httplib2.Http('.cache')
+
+    current_sig = bytearray(20)
+
+    found = False
+
+    for x in range(0,20):
+
+        print("Working on digit: " + str(x+1))
+
+        times = []
+
+        for b in range(0,256):
+
+            current_sig[x] = b
+            url = url_prefix + current_sig.hex()
+
+            print(url)
+
+            t1 = time.perf_counter_ns()
+            response = h.request(url)[0]
+            t2 = time.perf_counter_ns()
+
+            if response.status == 200:
+                found = True
+                break
+    
+
+            times.append(t2 - t1)
+
+        current_sig[x] = max(range(len(times)), key=times.__getitem__)
+
+        print(current_sig[x])
+        
+
+        if found == True:
+            break
+
+    
+            
+    return current_sig
+
+
+
+
+
 
     
 
