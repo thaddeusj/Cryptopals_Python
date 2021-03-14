@@ -168,6 +168,35 @@ class SHA1:
 
             assert MAC.hex() == my_MAC.hex()
 
+    @staticmethod
+    def insecure_compare(file,key,proposed_signature):
+        if len(proposed_signature) != 20:
+            return False
+        
+        signature = SHA1.HMAC(key,file)
+
+        import time
+
+        for b in range(0,20):
+            if (signature[b] != proposed_signature[b]):
+                return False
+
+            time.sleep(0.1)
+
+        return True
+
+    @staticmethod
+    def file_HMAC(file_name,key):
+        
+        HMAC = bytearray(0)
+
+        with open(file_name) as file:
+            contents = bytearray(file.read(),'utf-8')
+
+            HMAC = SHA1.HMAC(key,contents)
+        
+        return HMAC.hex()
+
 class MD4:
     @staticmethod
     def MD4(message,A = 0x67452301,
