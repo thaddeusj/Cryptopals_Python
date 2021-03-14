@@ -15,6 +15,9 @@ class hello:
         return "Hello, world!"
 
 class test:
+
+    files = {}
+
     def GET(self):
         user_data = web.input(file = None, signature = None)
 
@@ -23,17 +26,17 @@ class test:
 
         verified = False
 
+        if file_name not in test.files.keys():
+            with open(file_name) as file:
 
-        with open(file_name) as file:
+                test.files[file_name] = bytearray(file.read(),'utf-8')
 
-            global key
-            contents = bytearray(file.read(),'utf-8')
-            
-            verified = SHA1.insecure_compare(contents,key,signature)
+        global key
+        verified = SHA1.insecure_compare(test.files[file_name],key,signature)
 
         if verified == False:
             web.HTTPError("500")
-            return 500
+            return signature
         else:
             web.HTTPError("200")
             return 200

@@ -203,16 +203,21 @@ def challenge31(file_name):
 
             print(url)
 
-            t1 = time.perf_counter_ns()
-            response = h.request(url)[0]
-            t2 = time.perf_counter_ns()
+            total = 0
+            
+            for trials in range(0,1):
+                t1 = time.perf_counter_ns()
+                response = h.request(url)[0]
+                t2 = time.perf_counter_ns()
+
+                total += (t2 - t1)
 
             if response.status == 200:
                 found = True
                 break
     
-
-            times.append(t2 - t1)
+            print(total)
+            times.append(total)
 
         current_sig[x] = max(range(len(times)), key=times.__getitem__)
 
@@ -226,6 +231,7 @@ def challenge31(file_name):
             
     return current_sig
 
+    #The correct signature is: 20ad4b49911bbb98cd65eebc14337a165f5dbeeai
 
 
 
